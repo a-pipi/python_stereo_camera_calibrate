@@ -3,14 +3,8 @@ import cv2
 import os, shutil
 import time
 
-binning = 2
-
-
-
-
-
+binning = 1
 gain = 15.0
-
 
 device_manager = gx.DeviceManager()
 sn1 = 'FCS22070911'
@@ -22,8 +16,9 @@ print(f"Number of enumerated devices is {dev_num}")
 cam1 = device_manager.open_device_by_sn(sn1)
 
 # binning
-cam1.BinningHorizontal.set(binning)
-cam1.BinningVertical.set(binning)
+if binning != 1:
+    cam1.BinningHorizontal.set(binning)
+    cam1.BinningVertical.set(binning)
 cam1.size = (cam1.Width.get(), cam1.Height.get())
 
 # Get frame rate
@@ -50,8 +45,9 @@ print(f"Camera {sn1} is initialized")
 cam2 = device_manager.open_device_by_sn(sn2)
 
 # binning
-cam2.BinningHorizontal.set(binning)
-cam2.BinningVertical.set(binning)
+if binning != 1:
+    cam2.BinningHorizontal.set(binning)
+    cam2.BinningVertical.set(binning)
 cam2.size = (cam2.Width.get(), cam2.Height.get())
 
 # Get frame rate
@@ -106,6 +102,7 @@ while True:
     if binning == 1:      
         img1 = cv2.resize(img1, (1920,1080))
 
+    img1 = cv2.resize(img1, (int(1920/2),int(1080/2)))
     cv2.imshow(sn1, img1)
 
 cv2.destroyAllWindows()
@@ -139,6 +136,7 @@ while True:
     if binning == 1:      
         img2 = cv2.resize(img2, (1920,1080))
 
+    img2 = cv2.resize(img2, (int(1920/2),int(1080/2)))
     cv2.imshow(sn2, img2)
 
 cv2.destroyAllWindows()
@@ -190,6 +188,8 @@ while True:
         img1 = cv2.resize(img1, (1920,1080))
         img2 = cv2.resize(img2, (1920,1080))
 
+    img1 = cv2.resize(img1, (int(1920/2),int(1080/2)))
+    img2 = cv2.resize(img2, (int(1920/2),int(1080/2)))
     cv2.imshow(sn1, img1)
     cv2.imshow(sn2, img2)
 

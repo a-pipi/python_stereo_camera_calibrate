@@ -4,7 +4,7 @@ import numpy as np
 from math import dist
 
 class getCircleGrid():
-  def __init__(self, image, _flag_screen=False):
+  def __init__(self, image, rows, columns, minArea, _flag_screen=False):
     self.image = image
 
     # get size of image
@@ -13,13 +13,16 @@ class getCircleGrid():
     height = int(image.shape[0]/self.scale)
     self.size = (width, height)
 
+    # size of the calibration pattern
+    self.pattern_size = (columns, rows)
+
     # Set filtering parameters
     # Initialize parameter setting using cv2.SimpleBlobDetector
     self.params = cv2.SimpleBlobDetector_Params()
 
-    self.params.minArea = 50
+    self.params.minArea = minArea
     self.params.maxArea = 10000
-    self.params.minCircularity = 0.7
+    self.params.minCircularity = 0
     self.params.minThreshold = 0
 
     self.keypoints = []
@@ -29,12 +32,14 @@ class getCircleGrid():
 
     res_img = cv2.resize(self.image, self.size)
     cv2.imshow(self.windowName, res_img)
-    cv2.createTrackbar('Area', self.windowName, 0, 10000, self.area)
+    cv2.createTrackbar('Area', self.windowName, int(self.params.minArea), 10000, self.area)
     cv2.createTrackbar('Max Area', self.windowName, 10000, 10000, self.max_area)
     cv2.createTrackbar('Circulariy', self.windowName, 0, 100, self.circularity)
     cv2.createTrackbar('Threshold', self.windowName, 0, 255, self.binarize)
     if _flag_screen:
       cv2.setMouseCallback(self.windowName, self.mouse_event)
+
+    self.calculate_keypoints()
 
   def mouse_event(self, event, x, y, flags, params):
     if event == cv2.EVENT_LBUTTONDOWN:
@@ -83,13 +88,16 @@ class getCircleGrid():
     temp_img = cv2.drawKeypoints(temp_img, self.keypoints, blank, (0, 0, 255),
     cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
+    ret, self.centers = cv2.findCirclesGrid(temp_img, self.pattern_size, flags=(cv2.CALIB_CB_SYMMETRIC_GRID+cv2.CALIB_CB_CLUSTERING), blobDetector=detector)
+    temp_img = cv2.drawChessboardCorners(temp_img, self.pattern_size, self.centers, ret)
+
     # resize image and show it
     temp_img = cv2.resize(temp_img, self.size)
     cv2.imshow(self.windowName, temp_img)
 
 if __name__ == "__main__":
-  circleGrid = getCircleGrid(cv2.imread("images/screen/stereoRight/imageR0.png"), True)
+  circleGrid = getCircleGrid(cv2.imread("images/screen/stereoRight/imageR0.png"), 6, 9, True)
 
   cv2.waitKey(0)
   cv2.destroyAllWindows()
-  print(circleGrid.center_screen)
+  print(circleGrid.centers)

@@ -1,99 +1,76 @@
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from scipy.spatial.transform import Rotation
 
+from triangulate import *
+from find_circles import *
+from intersect import *
+from plane import *
 
+wait = 0
+img1 = cv2.imread("images/screen/stereoLeft/imageL0.png")
+img2 = cv2.imread("images/screen/stereoRight/imageR0.png")
 
-class getCircleGrid():  
-  def __init__(self):
-    # Set filtering parameters
-    # Initialize parameter setting using cv2.SimpleBlobDetector
-    self.params = cv2.SimpleBlobDetector_Params()
+# get camera matrices and rotation and translation matrix from calibration file
+calib_file = cv2.FileStorage('stereoCalibration.XML', cv2.FileStorage_READ)
+mtx1 = calib_file.getNode("mtx1").mat()
+mtx2 = calib_file.getNode("mtx2").mat()
+dist1 = calib_file.getNode("dist1").mat()
+dist2 = calib_file.getNode("dist2").mat()
+R = calib_file.getNode("R").mat()
+T = calib_file.getNode("T").mat()
 
-    self.params.minArea = 50
-    self.params.minCircularity = 0.7
+RT1 = np.concatenate([np.eye(3), [[0],[0],[0]]], axis = -1)
+P1 = mtx1 @ RT1 #projection matrix of camera 1
+RT2 = np.concatenate([R, T], axis = -1)
+P2 = mtx2 @ RT2 #projection matrix of camera 2
 
-  def area(self, value):
-    image = self.image
-    self.params.minArea = value
+# plot 3d points and cameras
+fig = plt.figure("Mirror")
+ax = fig.add_subplot(projection='3d')
 
-    # Create a detector with the parameters
-    detector = cv2.SimpleBlobDetector_create(self.params)
+# plot vector cam1
+ax.quiver(0,0,0,0,0,1, length=10)
 
-    # Detect blobs
-    self.keypoints = detector.detect(self.image)
+# plot vector cam2
+R_cam2_vec = Rotation.from_matrix(R).as_rotvec()
+T_cam2_vec = T.T[0]
+ax.quiver(T_cam2_vec[0], T_cam2_vec[1], T_cam2_vec[2], R_cam2_vec[0], R_cam2_vec[1], R_cam2_vec[2], length=10)
 
-    # Draw blobs on our image as red circles
-    blank = np.zeros((1, 1))
-    image = cv2.drawKeypoints(image, self.keypoints, blank, (0, 0, 255),
-    cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-    for keypoint in self.keypoints:
-      cv2.drawMarker(image, (int(keypoint.pt[0]), int(keypoint.pt[1])), (0,255,0))
-
-    windowName = 'image'
-
-    res_img = cv2.resize(image, (1080,720))
-    cv2.imshow(windowName, res_img)
-
-  def circularity(self, value):
-    image = self.image
-    self.params.minCircularity = value/100
-
-    # Create a detector with the parameters
-    detector = cv2.SimpleBlobDetector_create(self.params)
-
-    # Detect blobs
-    self.keypoints = detector.detect(self.image)
-
-    # Draw blobs on our image as red circles
-    blank = np.zeros((1, 1))
-    image = cv2.drawKeypoints(image, self.keypoints, blank, (0, 0, 255),
-    cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-    for keypoint in self.keypoints:
-      cv2.drawMarker(image, (int(keypoint.pt[0]), int(keypoint.pt[1])), (0,255,0))
-
-    windowName = 'image'
-
-    res_img = cv2.resize(image, (1080,720))
-    cv2.imshow(windowName, res_img)
-
-  def find_marker_circle(self, image):
-    self.image = image
-
-    # Set Area filtering parameters
-    self.params.filterByArea = True
-    self.params.minArea = self.params.minArea
-
-    # Set Circularity filtering parameters
-    self.params.filterByCircularity = True
-    self.params.minCircularity = self.params.minCircularity
-
-    # Create a detector with the parameters
-    detector = cv2.SimpleBlobDetector_create(self.params)
-
-    # Detect blobs
-    self.keypoints = detector.detect(self.image)
-
-    # Draw blobs on our image as red circles
-    blank = np.zeros((1, 1))
-    image = cv2.drawKeypoints(image, self.keypoints, blank, (0, 0, 255),
-    cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-    cv2.drawMarker(image, (int(self.keypoints[0].pt[0]), int(self.keypoints[0].pt[1])), (0,255,0))
-
-    windowName = 'image'
-
-    res_img = cv2.resize(image, (1080,720))
-    cv2.imshow(windowName, res_img)
-    cv2.createTrackbar('Area', windowName, 0, 100, self.area)
-    cv2.createTrackbar('Circulariy', windowName, 0, 100, self.circularity)
-
-circles = getCircleGrid()
-img = cv2.imread("images/screen/stereoLeft/imageL0.png")
-
-circles.find_marker_circle(img)
-
-
-
-cv2.waitKey(0)
+# get virtual calibration circle grid of screen and middel of screen from camera 1
+circleGridScreen1 = getCircleGrid(img1, 4, 6, 10, True)
+cv2.waitKey(wait)
 cv2.destroyAllWindows()
 
-print(len(circles.keypoints))
+# convert keypoints to imgpoints1
+imgpointsVirtual1 = circleGridScreen1.centers[:,0]
+imgpointsVirtual1_dst = cv2.undistortPoints(imgpointsVirtual1, mtx1, dist1)[:,0]
+
+# get virtual calibration circle grid of scren and middel of screen from camera 2
+circleGridScreen2 = getCircleGrid(img2, 4, 6, 10, True)
+cv2.waitKey(wait)
+cv2.destroyAllWindows()
+
+# convert keypoints to imgpoints2
+imgpointsVirtual2 = circleGridScreen2.centers[:,0]
+imgpointsVirtual2_dst = cv2.undistortPoints(imgpointsVirtual2, mtx2, dist2)[:,0]
+
+# triangulate 3d calibration patern points
+virtual_screen_points_3d = triangulate(mtx1, mtx2, R, T, imgpointsVirtual1, imgpointsVirtual2)
+
+# calculate plane of mirror point and plot point scatter, wireframe and normal vector
+center_virtual_screen, normal_virtual_screen = plane(virtual_screen_points_3d, ax, "Virtual screen", "g", _virtual_screen=True, _flag_plot=True)
+
+ax.set_xlim(-30,30)
+ax.set_ylim(-30,30)
+ax.set_zlim(0, 60)
+ax.set_xlabel('x')
+ax.set_ylabel('y')
+ax.set_zlabel('z')
+ax.legend()
+plt.show()
+
+
+print(virtual_screen_points_3d)

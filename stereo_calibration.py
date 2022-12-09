@@ -212,7 +212,7 @@ def triangulate(mtx1, mtx2, R, T, trian_corners):
 mtx1, dist1 = calibrate_camera(images_folder = 'images/stereoLeft/*')
 mtx2, dist2 = calibrate_camera(images_folder = 'images/stereoRight/*')
 cv.destroyAllWindows()
-R, T, corner_point = stereo_calibrate(mtx1, dist1, mtx2, dist2, 'images/synced/stereoLeft/*', 'images/synced/stereoRight/*')
+R, T, corner_point = stereo_calibrate(mtx2, dist2, mtx1, dist1, 'images/synced/stereoLeft/*', 'images/synced/stereoRight/*')
 cv.destroyAllWindows()
 
 print(R, T)
@@ -220,6 +220,8 @@ print(R, T)
 cv_file = cv.FileStorage('stereoCalibration.XML', cv.FileStorage_WRITE)
 cv_file.write("mtx1", mtx1)
 cv_file.write("mtx2", mtx2)
+cv_file.write("dist1", dist1)
+cv_file.write("dist2", dist2)
 cv_file.write("R", R)
 cv_file.write("T", T)
 
