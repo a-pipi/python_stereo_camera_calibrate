@@ -2,32 +2,40 @@ import numpy as np
 
 def plane(points, ax, label, color, _flag_plot=True, _virtual_screen=False):
   points = points.T
+  n = len(points)
+  points = np.c_[points, np.ones(n)]
   
   if _flag_plot:
     # plot all screenpoints
-    # ax.scatter(points[0,:], points[1,:], points[2,:], color=color, label=label)
-    ax.scatter(points[:,0], points[:,1], points[:,2], color=color, label=label)
+    ax.scatter(points[0,:], points[2,:], points[1,:], color=color, label=label)
 
-  length = 10
+  U, S, V = np.linalg.svd(points)
 
-  # position of center of plane 
-  mean_point = np.mean(points, axis=1, keepdims=True)
+  i = np.where(S==min(S))
 
-  # svd of points - mean_point
-  svd = np.linalg.svd(points - mean_point) 
+  coeff = V[i][0]
+  coeff = coeff/np.linalg.norm(coeff[0:3])
 
-  # left singular value
-  left = svd[0]
+  normal_plane = coeff[0:3]
 
-  # normal to the points
-  normal = left[:,-1]
+  point_plane = np.array([0,0,0])
+  point_plane[2] = -coeff[3]/coeff[2]
 
-  # normal should point to the camera
-  if normal[2] > 0:
-    normal = -normal
-
-  if _flag_plot:
-    ax.quiver(mean_point[0], mean_point[1], mean_point[2], normal[0], normal[1], normal[2], length=length, color=color)
   
-  
-  return mean_point, normal
+  return point_plane, normal_plane
+
+def norm_plane(points):
+  points = points.T
+  n = len(points)
+  points = np.c_[points, np.ones(n)]
+
+  U, S, V = np.linalg.svd(points)
+
+  i = np.where(S==min(S))
+
+  coeff = V[i][0]
+  coeff = coeff/np.linalg.norm(coeff[0:3])
+
+  normal_plane = coeff[0:3]
+
+  return normal_plane

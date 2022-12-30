@@ -4,14 +4,13 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from scipy.spatial.transform import Rotation
 
-from triangulate import *
-from find_circles import *
-from intersect import *
 from plane import *
+from intersectLinePlane import *
+from find_dots import *
 
-wait = 100
-img1 = cv2.imread("images/screen/stereoLeft/imageL0.png")
-img2 = cv2.imread("images/screen/stereoRight/imageR0.png")
+wait = 0
+img1 = cv2.imread("images/screen/camera1/image0.png")
+img2 = cv2.imread("images/screen/camera2/image0.png")
 
 # get camera matrices and rotation and translation matrix from calibration file
 calib_file = cv2.FileStorage('stereoCalibration.XML', cv2.FileStorage_READ)
@@ -27,64 +26,47 @@ P1 = mtx1 @ RT1 #projection matrix of camera 1
 RT2 = np.concatenate([R, T], axis = -1)
 P2 = mtx2 @ RT2 #projection matrix of camera 2
 
+# get the locations of the mirror dots from the images
+image1, imgpoints1 = mirror_dots(img1, (4,2), (100, 1800))
+image2, imgpoints2 = mirror_dots(img2, (4,2), (100, 1800))  
+
+# get the locations of the screen dots from the images
+image1, imgpointsVirtual1 = screen_dots(img1, (7,5), (660, 10000))
+image2, imgpointsVirtual2 = screen_dots(img2, (7,5), (660, 10000))
+
+images = [image1, image2]
+titles = ['Camera 1', 'Camera 2']
+
+# plot the found dots on the images and show
+for i in range(len(images)):
+  plt.subplot(1,2,i+1),plt.imshow(images[i],'gray')
+  plt.title(titles[i])
+  plt.xticks([]),plt.yticks([])
+plt.get_current_fig_manager().window.showMaximized()
+plt.show()
+
 # plot 3d points and cameras
 fig = plt.figure("Mirror")
 ax = fig.add_subplot(projection='3d')
 
 # plot vector cam1
-ax.quiver(0,0,0,0,0,1, length=10)
+ax.scatter(0,0,0, marker="*", color="g", linewidths=1.5, label='camera 1')
 
 # plot vector cam2
 R_cam2_vec = Rotation.from_matrix(R).as_rotvec()
 T_cam2_vec = T.T[0]
-ax.quiver(T_cam2_vec[0], T_cam2_vec[1], T_cam2_vec[2], R_cam2_vec[0], R_cam2_vec[1], R_cam2_vec[2], length=10)
+nodalpoint_camera2 = -np.dot(T.T, R)[0]
+ax.scatter(nodalpoint_camera2[0], nodalpoint_camera2[1], nodalpoint_camera2[2], marker="*", color="r", linewidths=1.5, label='camera2')
 
-# get calibration circle grid of mirror from camera 1
-circleGridMirror1 = getCircleGrid(img1, 2, 6, 1200)
-cv2.waitKey(wait)
-cv2.destroyAllWindows()
-
-# convert keypoints to imgpoints1
-imgpoints1 = circleGridMirror1.centers[:,0].T
-# imgpoints1_dst = cv2.undistortPoints(imgpoints1, mtx1, dist1)
-
-# get calibration circle grid of mirror from camera 2
-circleGridMirror2 = getCircleGrid(img2, 2, 6, 1200)
-cv2.waitKey(wait)
-cv2.destroyAllWindows()
-
-# convert keypoints to imgpoints2
-imgpoints2 = circleGridMirror2.centers[:,0].T
-# imgpoints2_dst = cv2.undistortPoints(imgpoints2, mtx2, dist2)
-
-# triangulate 3d calibration patern points
+# triangulate 3d calibration pattern points
 # mirror_points_3d = triangulate(mtx1, mtx2, R, T, imgpoints1_dst, imgpoints2_dst)
-mirror_points_3d = cv2.triangulatePoints(P1, P2, imgpoints1, imgpoints2)
+mirror_points_3d = cv2.triangulatePoints(P1, P2, imgpoints1.T, imgpoints2.T)
 mirror_points_3d /= mirror_points_3d[3]
 mirror_points_3d = mirror_points_3d[0:3,:]
 
 # calculate plane of mirror point and plot point scatter, wireframe and normal vector
-center_mirror, normal_mirror = plane(mirror_points_3d, ax, "Mirror", "r", _flag_plot=True)
+center_mirror, normal_mirror = plane(mirror_points_3d, ax, "Mirror", "r", _flag_plot=False)
 
-# plt.show()
-
-# get virtual calibration circle grid of screen and middel of screen from camera 1
-circleGridScreen1 = getCircleGrid(img1, 4, 6, 10, True)
-cv2.waitKey(wait)
-cv2.destroyAllWindows()
-
-# convert keypoints to imgpoints1
-imgpointsVirtual1 = circleGridScreen1.centers[:,0].T
-# imgpointsVirtual1_dst = cv2.undistortPoints(imgpointsVirtual1, mtx1, dist1)[:,0]
-
-# get virtual calibration circle grid of scren and middel of screen from camera 2
-circleGridScreen2 = getCircleGrid(img2, 4, 6, 10, True)
-cv2.waitKey(wait)
-cv2.destroyAllWindows()
-
-# convert keypoints to imgpoints2
-imgpointsVirtual2 = circleGridScreen2.centers[:,0].T
-# imgpointsVirtual2_dst = cv2.undistortPoints(imgpointsVirtual2, mtx2, dist2)[:,0]
 
 # triangulate 3d calibration patern points
 # virtual_screen_points_3d = triangulate(mtx1, mtx2, R, T, imgpointsVirtual1_dst, imgpointsVirtual2_dst)
@@ -93,33 +75,44 @@ virtual_screen_points_3d /= virtual_screen_points_3d[3]
 virtual_screen_points_3d = virtual_screen_points_3d[0:3,:]
 
 # calculate plane of mirror point and plot point scatter, wireframe and normal vector
-center_virtual_screen, normal_virtual_screen = plane(virtual_screen_points_3d, ax, "Virtual screen", "g", _virtual_screen=True, _flag_plot=True)
+# center_virtual_screen, normal_virtual_screen = plane(virtual_screen_points_3d, ax, "Virtual screen", "g", _virtual_screen=True, _flag_plot=True)
 
 # get real screen points
 k=0
 intersect_points = np.zeros(virtual_screen_points_3d.shape)
 screen_points = np.zeros(virtual_screen_points_3d.shape)
 
-# create second points from first point and normal of virtual screen
-virtual_screen_second_points = virtual_screen_points_3d + normal_virtual_screen*100
-for point in virtual_screen_points_3d:
-  temp = isect_line_plane_v3(point, virtual_screen_second_points[:,k], center_mirror, -normal_mirror)
-  temp = np.array(temp)
-  temp = temp.T[0,:]
+for point in virtual_screen_points_3d.T:
+  temp = intersect_line_plane(point, normal_mirror, center_mirror, normal_mirror)
   intersect_points[:,k] = temp
   screen_points[:,k] = intersect_points[:,k] - (virtual_screen_points_3d[:,k] - intersect_points[:,k])
   k+=1
 
-ax.scatter(screen_points[0,:], screen_points[1,:], screen_points[2,:])
+# get center of the screen
+l = len(screen_points[0])//2
+center_screen = screen_points[:,l]
 
-ax.set_xlim(-30,30)
-ax.set_ylim(-30,30)
-ax.set_zlim(0, 60)
+# calculate normale of the screen
+normal_screen = norm_plane(screen_points)
+
+
+# scatter intersection and screen points
+ax.scatter(mirror_points_3d[0,:], mirror_points_3d[2,:], mirror_points_3d[1,:], color='gray', label='mirror points')
+ax.scatter(intersect_points[0,:], intersect_points[2,:], intersect_points[1,:], color='black', label="intersection points")
+ax.scatter(screen_points[0,:], screen_points[2,:], screen_points[1,:], color='blue', label='screen points')
+ax.scatter(virtual_screen_points_3d[0,:], virtual_screen_points_3d[2,:], virtual_screen_points_3d[1,:], color='cyan', label='virtual screen points')
+ax.scatter(center_screen[0], center_screen[2], center_screen[1], color='pink', linewidths=10, label='center screen')
+
+# set axis labels and legens
 ax.set_xlabel('x')
-ax.set_ylabel('y')
-ax.set_zlabel('z')
+ax.set_ylabel('z')
+ax.set_zlabel('y')
+ax.invert_zaxis()
 ax.legend()
+
+# set plot fullscreen and show
+plt.get_current_fig_manager().window.showMaximized()
 plt.show()
-
-
 print("einde")
+
+#NOTE: save paramters to XML file

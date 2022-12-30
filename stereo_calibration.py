@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 rows = 6 #number of checkerboard rows.
 columns = 9 #number of checkerboard columns.
-world_scaling = 2.5 #change this to the real world square size. Or not.
+world_scaling = 13 #change this to the real world square size. Or not.
 _show = True
 
 def calibrate_camera(images_folder):
@@ -14,7 +14,7 @@ def calibrate_camera(images_folder):
     for imname in images_names:
         im = cv.imread(imname, 1)
         images.append(im)
- 
+  
     #criteria used by checkerboard pattern detector.
     #Change this if the code can't find the checkerboard
     criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
@@ -27,22 +27,33 @@ def calibrate_camera(images_folder):
     #frame dimensions. Frames should be the same size.
     width = images[0].shape[1]
     height = images[0].shape[0]
+
+    focal_length = 16 # in mm
+    pixel_size = 2.4e-3 # in mm
+
+    fx = focal_length/pixel_size
+    fy = focal_length/pixel_size
+    cx = width/2
+    cy = height/2
+
+    intrinsic_matrix = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
  
     #Pixel coordinates of checkerboards
     imgpoints = [] # 2d points in image plane.
  
     #coordinates of the checkerboard in checkerboard world space.
     objpoints = [] # 3d point in real world space
-    
+    idx = 0
     for frame in images:
         gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
- 
+
         #find the checkerboard
         ret, corners = cv.findChessboardCorners(gray, (rows, columns), None)
+        cv.destroyAllWindows()
 
         
         if ret == True:
- 
+
             #Convolution size used to improve corner detection. Don't make this too large.
             conv_size = (11, 11)
 
@@ -50,20 +61,21 @@ def calibrate_camera(images_folder):
             corners = cv.cornerSubPix(gray, corners, conv_size, (-1, -1), criteria)
             if _show:
                 cv.drawChessboardCorners(frame, (rows,columns), corners, ret)
-                cv.imshow('img', frame)
+                res_frame = cv.resize(frame, (1080,720))
+                cv.imshow(images_names[idx], res_frame)
                 k = cv.waitKey(100)
- 
+                print(images_names[idx])
+
             objpoints.append(objp)
             imgpoints.append(corners)
 
-        
-    
+            idx += 1
+
  
- 
-    ret, mtx, dist, rvecs, tvecs = cv.calibrateCamera(objpoints, imgpoints, (width, height), None, None)
+    ret, mtx, dist, rvecs, tvecs = cv.calibrateCamera(objpoints, imgpoints, (width, height), None, None)#intrinsic_matrix, None, flags=cv.CALIB_USE_INTRINSIC_GUESS)
     print('rmse:', ret)
-    print('camera matrix:\n', mtx)
-    print('distortion coeffs:', dist)
+    # print('camera matrix:\n', mtx)
+    # print('distortion coeffs:', dist)
     # print('Rs:\n', rvecs)
     # print('Ts:\n', tvecs)
  
@@ -71,9 +83,9 @@ def calibrate_camera(images_folder):
 
 def stereo_calibrate(mtx1, dist1, mtx2, dist2, frames_1, frames_2):
     #read the synched frames
-    c1_images_names = glob.glob(frames_1)
-    c2_images_names = glob.glob(frames_2)
- 
+    c1_images_names = sorted(glob.glob(frames_1))
+    c2_images_names = sorted(glob.glob(frames_2))
+
     c1_images = []
     c2_images = []
     for im1, im2 in zip(c1_images_names, c2_images_names):
@@ -102,7 +114,7 @@ def stereo_calibrate(mtx1, dist1, mtx2, dist2, frames_1, frames_2):
     #coordinates of the checkerboard in checkerboard world space.
     objpoints = [] # 3d point in real world space
     
-    count = 0
+    idx = 0
     for frame1, frame2 in zip(c1_images, c2_images):
         gray1 = cv.cvtColor(frame1, cv.COLOR_BGR2GRAY)
         gray2 = cv.cvtColor(frame2, cv.COLOR_BGR2GRAY)
@@ -112,27 +124,30 @@ def stereo_calibrate(mtx1, dist1, mtx2, dist2, frames_1, frames_2):
         if c_ret1 == True and c_ret2 == True:
             corners1 = cv.cornerSubPix(gray1, corners1, (11, 11), (-1, -1), criteria)
             corners2 = cv.cornerSubPix(gray2, corners2, (11, 11), (-1, -1), criteria)
-
-            if count == 0:
+  
+            if idx == 0:
                 corner_point = [corners1[0], corners2[1]]
 
             if _show:
                 cv.drawChessboardCorners(frame1, (rows, columns), corners1, c_ret1)
-                cv.imshow('img', frame1)
+                res_frame = cv.resize(frame1, (1080,720))
+                cv.imshow(c1_images_names[idx], res_frame)
     
                 cv.drawChessboardCorners(frame2, (rows, columns), corners2, c_ret2)
-                cv.imshow('img2', frame2)
+                res_frame = cv.resize(frame2, (1080,720))
+                cv.imshow(c2_images_names[idx], res_frame)
                 k = cv.waitKey(100)
+                cv.destroyAllWindows()
  
             objpoints.append(objp)
             imgpoints_left.append(corners1)
             imgpoints_right.append(corners2)
-            count += 1
+            idx += 1
  
-    stereocalibration_flags = cv.CALIB_FIX_INTRINSIC
+    stereocalibration_flags = cv.CALIB_RATIONAL_MODEL+cv.CALIB_FIX_INTRINSIC+cv.CALIB_FIX_PRINCIPAL_POINT
     ret, CM1, dist1, CM2, dist2, R, T, E, F = cv.stereoCalibrate(objpoints, imgpoints_left, imgpoints_right, mtx1, dist1,
                                                                  mtx2, dist2, (width, height), criteria = criteria, flags = stereocalibration_flags)
-    print("Corner points: ", corner_point)
+    # print("Corner points: ", corner_point)
     print("RMSE: ", ret)
     return R, T, corner_point
 
@@ -209,22 +224,29 @@ def triangulate(mtx1, mtx2, R, T, trian_corners):
     #uncomment to see the triangulated pose. This may cause a crash if youre also using cv.imshow() above.
     plt.show()
 
-mtx1, dist1 = calibrate_camera(images_folder = 'images/stereoLeft/*')
-mtx2, dist2 = calibrate_camera(images_folder = 'images/stereoRight/*')
-cv.destroyAllWindows()
-R, T, corner_point = stereo_calibrate(mtx2, dist2, mtx1, dist1, 'images/synced/stereoLeft/*', 'images/synced/stereoRight/*')
-cv.destroyAllWindows()
+if __name__ == "__main__":
+    mtx1, dist1 = calibrate_camera(images_folder = 'images/synced/camera1/*')
+    mtx2, dist2 = calibrate_camera(images_folder = 'images/synced/camera2/*')
+    cv.destroyAllWindows()
+    R, T, corner_point = stereo_calibrate(mtx2, dist2, mtx1, dist1, 'images/synced/camera1/*', 'images/synced/camera2/*')
+    cv.destroyAllWindows()
 
-print(R, T)
+    print(np.linalg.norm(T))
+    M = np.empty((4,4))
+    M[:3,:3] = R
+    M[:3,3] = T.T[0]
+    M[3,:] = [0,0,0,1]
 
-cv_file = cv.FileStorage('stereoCalibration.XML', cv.FileStorage_WRITE)
-cv_file.write("mtx1", mtx1)
-cv_file.write("mtx2", mtx2)
-cv_file.write("dist1", dist1)
-cv_file.write("dist2", dist2)
-cv_file.write("R", R)
-cv_file.write("T", T)
+    print(np.dot(M, [0,0,0,1]))
+
+    cv_file = cv.FileStorage('stereoCalibration.XML', cv.FileStorage_WRITE)
+    cv_file.write("mtx1", mtx1)
+    cv_file.write("mtx2", mtx2)
+    cv_file.write("dist1", dist1)
+    cv_file.write("dist2", dist2)
+    cv_file.write("R", R)
+    cv_file.write("T", T)
 
 
-#this call might cause segmentation fault error. This is due to calling cv.imshow() and plt.show()
-triangulate(mtx1, mtx2, R, T, corner_point)
+    #this call might cause segmentation fault error. This is due to calling cv.imshow() and plt.show()
+    # triangulate(mtx1, mtx2, R, T, corner_point)
