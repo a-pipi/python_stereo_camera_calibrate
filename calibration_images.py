@@ -3,6 +3,8 @@ import cv2
 import os, shutil
 import time
 
+sub_folder = input("What do you need pictures for: ")
+
 binning = 1
 gain = 15.0
 screen = True
@@ -193,10 +195,7 @@ while True:
         break
     if k == ord('s'):
         if num == 0:
-            if screen:
-                folder = '/home/arthur/PycharmProjects/python_stereo_camera_calibrate/images/screen/camera1'
-            else:
-                folder = '/home/arthur/PycharmProjects/python_stereo_camera_calibrate/images/synced/camera1'
+            folder = f'/home/arthur/PycharmProjects/python_stereo_camera_calibrate/images/{sub_folder}/camera1'
             for filename in os.listdir(folder):
                 file_path = os.path.join(folder, filename)
                 try:
@@ -206,10 +205,8 @@ while True:
                         shutil.rmtree(file_path)
                 except Exception as e:
                     print('Failed to delete %s. Reason: %s' % (file_path, e))
-            if screen:
-                folder = '/home/arthur/PycharmProjects/python_stereo_camera_calibrate/images/screen/camera2'
-            else:
-                folder = '/home/arthur/PycharmProjects/python_stereo_camera_calibrate/images/synced/camera2'
+            
+            folder = f'/home/arthur/PycharmProjects/python_stereo_camera_calibrate/images/{sub_folder}/camera1'
             for filename in os.listdir(folder):
                 file_path = os.path.join(folder, filename)
                 try:
@@ -219,12 +216,9 @@ while True:
                         shutil.rmtree(file_path)
                 except Exception as e:
                     print('Failed to delete %s. Reason: %s' % (file_path, e))
-        if screen:
-            cv2.imwrite('images/screen/camera1/image' + str(num) + '.png', img1)
-            cv2.imwrite('images/screen/camera2/image' + str(num) + '.png', img2)
-        else:
-            cv2.imwrite('images/synced/camera1/image' + str(num) + '.png', img1)
-            cv2.imwrite('images/synced/camera2/image' + str(num) + '.png', img2)
+
+        cv2.imwrite(f'images/{sub_folder}/camera1/image{str(num)}.png', img1)
+        cv2.imwrite(f'images/{sub_folder}/camera2/image{str(num)}.png', img2)
         num += 1
 
     if binning == 1:      

@@ -13,15 +13,18 @@ def mirror_dots(image, pattern_size, area):
   params.maxArea = area[1]
   params.minCircularity = 0.1
   params.minThreshold = 0
-  params.filterByConvexity = False
+  params.filterByConvexity = True
+  params.minConvexity = 0.9
   params.filterByInertia = False
+
+  # create blob detector
+  detector = cv2.SimpleBlobDetector_create(params)
 
   # find the dots on of the mirror for camera 1 and camera 2
   upper_image = image[0:int(shape[0]/2), :]
   lower_image = image[int(shape[0]/2):int(shape[0]), :]
 
-  detector = cv2.SimpleBlobDetector_create(params)
-
+  # find circle grids in the upper and lower part of the image
   upper_ret, upper_centers = cv2.findCirclesGrid(upper_image, pattern_size, flags=(cv2.CALIB_CB_SYMMETRIC_GRID+cv2.CALIB_CB_CLUSTERING), blobDetector=detector)
   lower_ret, lower_centers = cv2.findCirclesGrid(lower_image, pattern_size, flags=(cv2.CALIB_CB_SYMMETRIC_GRID+cv2.CALIB_CB_CLUSTERING), blobDetector=detector)
 
@@ -71,6 +74,40 @@ def screen_dots(image, pattern_size, area):
   
   return image, centers
 
+def led_dots(image, area):  
+  # Set filtering parameters
+  # Initialize parameter setting using cv2.SimpleBlobDetector
+  params = cv2.SimpleBlobDetector_Params()
+  params.minArea = area[0]
+  params.maxArea = area[1]
+  params.minCircularity = 0.9
+  params.minThreshold = 20
+  params.maxThreshold = 255
+  params.thresholdStep = 5
+  params.filterByConvexity = False
+  params.filterByInertia = False
+
+  detector = cv2.SimpleBlobDetector_create(params)
+
+  keypoints = detector.detect(image)
+
+  temp_image = cv2.drawKeypoints(image, keypoints, np.array([]), (255,0,0), flags=cv2.DrawMatchesFlags_DRAW_RICH_KEYPOINTS)
+
+  plt.subplot(),plt.imshow(temp_image,'gray')
+  plt.get_current_fig_manager().window.showMaximized()
+  plt.xticks([]),plt.yticks([])
+  plt.title("Select LED dot")
+  point = plt.ginput(1, show_clicks=True)
+  plt.show()
+
+  dist = [np.linalg.norm(np.array(keypoint.pt)-np.array(point)) for keypoint in keypoints]
+
+  led_location = keypoints[np.argmin(dist)].pt
+
+  image = cv2.drawMarker(image, (int(led_location[0]), int(led_location[1])), (0,255,0), markerType=cv2.MARKER_TILTED_CROSS, thickness=5)
+  return image, led_location
+
+
 def show_images(images):
   # create titles of images and put them in an array
   titles = ['Camera 1', 'Camera 2']
@@ -81,15 +118,19 @@ def show_images(images):
     plt.xticks([]),plt.yticks([])
   plt.show()
 
+
 if __name__ == "__main__":
   # read the images
-  img1 = cv2.imread("images/screen/camera1/image0.png")
-  img2 = cv2.imread("images/screen/camera2/image0.png")
+  img1 = cv2.imread("images/led/camera1/image0.png")
+  img2 = cv2.imread("images/led/camera2/image0.png")
   
-  image1, mirror_dots1 = mirror_dots(img1, (4,2), (100, 1800))
-  image2, mirror_dots2 = mirror_dots(img2, (4,2), (100, 1800))  
+  image1, mirror_dots1 = mirror_dots(img1, (4,2), (150, 1000))
+  image2, mirror_dots2 = mirror_dots(img2, (4,2), (150, 1800))  
 
-  image1, screen_dots2 = screen_dots(img1, (7,5), (660, 10000))
-  image2, screen_dots3 = screen_dots(img2, (7,5), (660, 10000))
+  # image1, screen_dots1 = screen_dots(img1, (7,5), (1000,10000))
+  # image2, screen_dots2 = screen_dots(img2, (7,5), (1000,10000))
+
+  image1, location1 = led_dots(img1, (100,10000))
+  image2, location2 = led_dots(img2, (100,10000))
 
   show_images([image1, image2])

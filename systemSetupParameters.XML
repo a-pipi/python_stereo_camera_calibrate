@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<opencv_storage>
+<rmtx1 type_id="opencv-matrix">
+  <rows>3</rows>
+  <cols>3</cols>
+  <dt>d</dt>
+  <data>
+    9.0372041458828545e-01 -5.2758027375562198e-02
+    1.0243985507509065e-01 1.3900194210850507e-02 8.4789295636977724e-01
+    3.4963856654254710e-01 -1.1566174461977349e-01
+    -3.4549010398742686e-01 8.4243094030514720e-01</data></rmtx1>
+<rmtx2 type_id="opencv-matrix">
+  <rows>3</rows>
+  <cols>3</cols>
+  <dt>d</dt>
+  <data>
+    8.9947220071606360e-01 -5.7935446259119533e-02
+    -1.3259398670281650e-01 1.0952207193472015e-01
+    8.4171281600383763e-01 3.4768845135914878e-01 1.0045860837399077e-01
+    -3.5944637147239622e-01 8.3853283438636828e-01</data></rmtx2>
+<nodalpoint_camera1 type_id="opencv-matrix">
+  <rows>3</rows>
+  <cols>1</cols>
+  <dt>d</dt>
+  <data>
+    8.1068979786890594e+01 1.9196294938317806e+02
+    -4.0543408533180013e+01</data></nodalpoint_camera1>
+<nodalpoint_camera2 type_id="opencv-matrix">
+  <rows>4</rows>
+  <cols>1</cols>
+  <dt>d</dt>
+  <data>
+    -8.2660703124998534e+01 1.7973937536088516e+02
+    -4.0641592873798501e+01 1.</data></nodalpoint_camera2>
+<LED1_location type_id="opencv-matrix">
+  <rows>4</rows>
+  <cols>1</cols>
+  <dt>d</dt>
+  <data>
+    8.0983676502853527e+01 1.5294472682854635e+02
+    -6.4831512426924093e+01 1.</data></LED1_location>
+<LED2_location type_id="opencv-matrix">
+  <rows>4</rows>
+  <cols>1</cols>
+  <dt>d</dt>
+  <data>
+    -1.3481595393410581e+02 1.6953395702386337e+02
+    -2.1596162107109294e+00 1.</data></LED2_location>
+<LED3_location type_id="opencv-matrix">
+  <rows>4</rows>
+  <cols>1</cols>
+  <dt>d</dt>
+  <data>
+    -2.3094523971850577e+01 2.6842806362893941e+02
+    -6.5269143488819111e+01 1.</data></LED3_location>
+</opencv_storage>
