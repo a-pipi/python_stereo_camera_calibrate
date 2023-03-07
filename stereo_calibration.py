@@ -9,11 +9,26 @@ world_scaling = 13 #change this to the real world square size. Or not.
 _show = True
 
 def calibrate_camera(images_folder):
+    """
+    Calibrates a camera to get its internal parameters. It uses a checkerboard
+    in the frames to determine the parameters. It shows the frames with the 
+    found checkerboard. 
+    
+    input:
+    - images folder (str)
+
+    output:
+    - Camera matrix (mtx)
+    - Camera distortion coefficients (dist)
+    """
+    # sort images, read them and put them in a list
     images_names = sorted(glob.glob(images_folder))
-    images = []
-    for imname in images_names:
-        im = cv.imread(imname, 1)
-        images.append(im)
+    # images = []
+    # for imname in images_names:
+    #     im = cv.imread(imname, 1)
+    #     images.append(im)
+
+    images = [cv.imread(imname, 1) for imname in images_names]
   
     #criteria used by checkerboard pattern detector.
     #Change this if the code can't find the checkerboard
@@ -28,9 +43,11 @@ def calibrate_camera(images_folder):
     width = images[0].shape[1]
     height = images[0].shape[0]
 
+    # setup focal length and pixelsize
     focal_length = 16 # in mm
     pixel_size = 2.4e-3 # in mm
 
+    # get camera parameters
     fx = focal_length/pixel_size
     fy = focal_length/pixel_size
     cx = width/2
@@ -82,6 +99,22 @@ def calibrate_camera(images_folder):
     return mtx, dist
 
 def stereo_calibrate(mtx1, dist1, mtx2, dist2, frames_1, frames_2):
+    """
+    Stereo calibrates two camera to get the rotation and translation between camera 1 and camera 2.
+
+    input:
+    - Camera matrix 1 (mtx1)
+    - Camera matrix 2 (mtx2)
+    - Distortion coefficient camera 1 (dist1)
+    - Distortion coefficient camera 2 (dist2)
+    - Frames of camera 1 (frames_1)
+    - Frames of camera 2 (frames_2)
+
+    output:
+    - Rotation matrix between camera 1 and camera 2 (R)
+    - Translation vector between camera 1 and camera 2 (T)
+
+    """
     #read the synched frames
     c1_images_names = sorted(glob.glob(frames_1))
     c2_images_names = sorted(glob.glob(frames_2))
@@ -116,12 +149,16 @@ def stereo_calibrate(mtx1, dist1, mtx2, dist2, frames_1, frames_2):
     
     idx = 0
     for frame1, frame2 in zip(c1_images, c2_images):
+        # threshold iamges
         gray1 = cv.cvtColor(frame1, cv.COLOR_BGR2GRAY)
         gray2 = cv.cvtColor(frame2, cv.COLOR_BGR2GRAY)
+
+        # find corners of checkerboards
         c_ret1, corners1 = cv.findChessboardCorners(gray1, (rows, columns), None)
         c_ret2, corners2 = cv.findChessboardCorners(gray2, (rows, columns), None)
  
         if c_ret1 == True and c_ret2 == True:
+            # get subpixel coordinates of corners
             corners1 = cv.cornerSubPix(gray1, corners1, (11, 11), (-1, -1), criteria)
             corners2 = cv.cornerSubPix(gray2, corners2, (11, 11), (-1, -1), criteria)
   
@@ -129,6 +166,7 @@ def stereo_calibrate(mtx1, dist1, mtx2, dist2, frames_1, frames_2):
                 corner_point = [corners1[0], corners2[1]]
 
             if _show:
+                # draw checkerboard on images and show images
                 cv.drawChessboardCorners(frame1, (rows, columns), corners1, c_ret1)
                 res_frame = cv.resize(frame1, (1080,720))
                 cv.imshow(c1_images_names[idx], res_frame)
@@ -138,18 +176,20 @@ def stereo_calibrate(mtx1, dist1, mtx2, dist2, frames_1, frames_2):
                 cv.imshow(c2_images_names[idx], res_frame)
                 k = cv.waitKey(100)
                 cv.destroyAllWindows()
- 
+            
+            # append object and image points to variables
             objpoints.append(objp)
             imgpoints_left.append(corners1)
             imgpoints_right.append(corners2)
             idx += 1
- 
+    
+    # perform stereo calibration
     stereocalibration_flags = cv.CALIB_RATIONAL_MODEL+cv.CALIB_FIX_INTRINSIC+cv.CALIB_FIX_PRINCIPAL_POINT
     ret, CM1, dist1, CM2, dist2, R, T, E, F = cv.stereoCalibrate(objpoints, imgpoints_left, imgpoints_right, mtx1, dist1,
                                                                  mtx2, dist2, (width, height), criteria = criteria, flags = stereocalibration_flags)
     # print("Corner points: ", corner_point)
     print("RMSE: ", ret)
-    return R, T, corner_point
+    return R, T
 
 
 def triangulate(mtx1, mtx2, R, T, trian_corners):
@@ -225,11 +265,15 @@ def triangulate(mtx1, mtx2, R, T, trian_corners):
     plt.show()
 
 if __name__ == "__main__":
+    # calibrate both cameras
     mtx1, dist1 = calibrate_camera(images_folder = 'images/synced/camera1/*')
     mtx2, dist2 = calibrate_camera(images_folder = 'images/synced/camera2/*')
     cv.destroyAllWindows()
-    R, T, corner_point = stereo_calibrate(mtx2, dist2, mtx1, dist1, 'images/synced/camera1/*', 'images/synced/camera2/*')
+
+    # stereo calibrate cameras
+    R, T = stereo_calibrate(mtx2, dist2, mtx1, dist1, 'images/synced/camera1/*', 'images/synced/camera2/*')
     cv.destroyAllWindows()
+
 
     print(np.linalg.norm(T))
     M = np.empty((4,4))
@@ -239,6 +283,7 @@ if __name__ == "__main__":
 
     print(np.dot(M, [0,0,0,1]))
 
+    # Save parameters to XML file
     cv_file = cv.FileStorage('stereoCalibration.XML', cv.FileStorage_WRITE)
     cv_file.write("mtx1", mtx1)
     cv_file.write("mtx2", mtx2)
@@ -246,7 +291,3 @@ if __name__ == "__main__":
     cv_file.write("dist2", dist2)
     cv_file.write("R", R)
     cv_file.write("T", T)
-
-
-    #this call might cause segmentation fault error. This is due to calling cv.imshow() and plt.show()
-    # triangulate(mtx1, mtx2, R, T, corner_point)

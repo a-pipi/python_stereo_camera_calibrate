@@ -17,6 +17,13 @@ dist2 = camera_file.getNode("dist2").mat()
 R = camera_file.getNode("R").mat()
 T = camera_file.getNode("T").mat()
 
+# transformation matrix from camera1 to camera2
+tmtx_cam1_cam2 = np.vstack([np.hstack([R, T]), [0,0,0,1]])
+
+
+# new coordinate system origin
+ori = np.vstack([0,0,0])
+
 # import screen calibration parameters
 rmtx_screen = screen_file.getNode("rmtx_screen").mat()
 location_screen = screen_file.getNode("location_screen").mat()
@@ -29,21 +36,24 @@ led_locations = led_file.getNode("LED_locations").mat()
 fig = plt.figure("setup")
 ax = fig.add_subplot(projection='3d')
 
-rmtx1 = np.linalg.inv(rmtx_screen)
-nodalpoint_camera1 = -location_screen
-
-trans = np.concatenate([rmtx1, nodalpoint_camera1], axis=-1)
+trans = np.concatenate([rmtx_screen, location_screen], axis=-1)
 trans = np.vstack([trans, [0,0,0,1]])
 
-rmtx2 = rmtx1 @ R
-nodalpoint_camera2 = trans@np.vstack([-T, [1]]) #nodalpoint_camera1.T[0] - T.T[0]@rmtx2
+tmtx1 = np.linalg.inv(trans)
+rmtx1 = np.eye(3) #tmtx1[0:3,0:3] #np.linalg.inv(rmtx_screen)
+nodalpoint_camera1 = np.array([0,0,0]) #tmtx1[0:3,3] #np.vstack([-location_screen, 1])
 
-led1 = np.vstack([led_locations[:,0][...,None], [1]])
-led1 = trans@led1
-led2 = np.vstack([led_locations[:,1][...,None], [1]])
-led2 = trans@led2
-led3 = np.vstack([led_locations[:,2][...,None], [1]])
-led3 = trans@led3
+
+tmtx_1_2 = np.concatenate([R, T], axis=-1)
+tmtx_1_2 = np.vstack([tmtx_1_2, [0,0,0,1]])
+tmtx2 = np.linalg.inv(tmtx_1_2)
+rmtx2 = R#rmtx1 @ R
+nodalpoint_camera2 =  R.T @ -T#tmtx2[0:3,3] + nodalpoint_camera1
+
+led1 = np.vstack([led_locations[:,0][...,None], 1]) 
+led3 = np.vstack([led_locations[:,1][...,None], 1]) 
+led2 = np.vstack([led_locations[:,2][...,None], 1]) 
+
 
 draw_coordinate_system([0,0,0], "Screen", ax, color='blue')
 draw_coordinate_system(nodalpoint_camera1, "Camera1", ax, R=rmtx1, color='red')

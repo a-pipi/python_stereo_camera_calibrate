@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from scipy.spatial.transform import Rotation
 from scipy.spatial import KDTree, procrustes
+import glob
 
 from drawCoordinateSystem import *
 from plane import *
@@ -11,8 +12,8 @@ from intersectLinePlane import *
 from find_dots import *
 
 wait = 0
-img1 = cv2.imread("images/screen/camera1/image0.png")
-img2 = cv2.imread("images/screen/camera2/image0.png")
+img1 = cv2.imread("images/screen/camera1/image4.png")
+img2 = cv2.imread("images/screen/camera2/image4.png")
 
 # get camera matrices and rotation and translation matrix from calibration file
 calib_file = cv2.FileStorage('stereoCalibration.XML', cv2.FileStorage_READ)
@@ -27,6 +28,76 @@ RT1 = np.concatenate([np.eye(3), [[0],[0],[0]]], axis = -1)
 P1 = mtx1 @ RT1 #projection matrix of camera 1
 RT2 = np.concatenate([R, T], axis = -1)
 P2 = mtx2 @ RT2 #projection matrix of camera 2
+
+
+
+def screen_points(img_mirror_points1, img_mirror_points2, img_screen_points1, img_screen_points2):
+  # triangulate 3d calibration pattern points
+  mirror_points_3d = cv2.triangulatePoints(P1, P2, img_mirror_points1.T, img_mirror_points2.T)
+  mirror_points_3d /= mirror_points_3d[3]
+  mirror_points_3d = mirror_points_3d[0:3,:]
+
+  # calculate plane of mirror point and plot point scatter, wireframe and normal vector
+  center_mirror, normal_mirror = plane(mirror_points_3d, ax, "Mirror", "r", _flag_plot=False)
+
+  # triangulate 3d calibration patern points
+  virtual_screen_points_3d = cv2.triangulatePoints(P1, P2, img_screen_points1, img_screen_points2)
+  virtual_screen_points_3d /= virtual_screen_points_3d[3]
+  virtual_screen_points_3d = virtual_screen_points_3d[0:3,:]
+
+  # get real screen points
+  k=0
+  intersect_points = np.zeros(virtual_screen_points_3d.shape)
+  screen_points = np.zeros(virtual_screen_points_3d.shape)
+
+  for point in virtual_screen_points_3d.T:
+    temp = intersect_line_plane(point, normal_mirror, center_mirror, normal_mirror)
+    intersect_points[:,k] = temp
+    screen_points[:,k] = intersect_points[:,k] - (virtual_screen_points_3d[:,k] - intersect_points[:,k])
+    k+=1
+
+  return screen_points
+
+
+def center_screen(images1, images2):
+  # sort and read the synched frames
+  c1_images_names = sorted(glob.glob(images1))
+  c2_images_names = sorted(glob.glob(images2))
+
+  c1_images = [cv2.imread(img1, 1) for img1 in c1_images_names]
+  c2_images = [cv2.imread(img2, 1) for img2 in c2_images_names]
+
+  # determine location of mirror and screen dots in image
+  img_mirror_points1 = [mirror_dots(img1, (4,2), (100, 1800))[1] for img1 in c1_images]
+  img_mirror_points2 = [mirror_dots(img2, (4,2), (100, 1800))[1] for img2 in c2_images]
+  img_screen_points1 = [screen_dots(img1, (7,5), (660, 10000))[1] for img1 in c1_images]
+  img_screen_points2 = [screen_dots(img2, (7,5), (660, 10000))[1] for img2 in c2_images]
+
+  counter = 0
+  for img1, img2 in zip(c1_images, c2_images):
+    images = [img1, img2]
+    titles = [c1_images_names[counter], c2_images_names[counter]]
+
+    # plot the found dots on the images and show
+    for i in range(len(images)):
+      plt.subplot(1,2,i+1),plt.imshow(images[i],'gray')
+      plt.title(titles[i])
+      plt.xticks([]),plt.yticks([])
+    plt.get_current_fig_manager().window.showMaximized()
+    plt.show()
+
+    counter += 1
+  
+  
+  screen_points_3d = [screen_points(img_mirror_points1[i], img_mirror_points2[i], img_screen_points1[i], img_screen_points2[i]) for i in range(len(img_mirror_points1))]
+  
+  # get calculated centers
+  l = len(screen_points_3d[0][0])//2
+  center_screen = [screen_points[i][:,l] for i in range(len(screen_points_3d))]
+  center_screen = np.asarray(center_screen)
+  
+  print("niks")
+
 
 # get the locations of the mirror dots from the images
 image1, imgpoints1 = mirror_dots(img1, (4,2), (100, 1800))
@@ -59,6 +130,9 @@ R_cam2_vec = Rotation.from_matrix(R).as_rotvec()
 T_cam2_vec = T.T[0]
 nodalpoint_camera2 = -np.dot(T.T, R)[0]
 # ax.scatter(nodalpoint_camera2[0], nodalpoint_camera2[2], nodalpoint_camera2[1], marker="*", color="r", linewidths=1.5, label='camera2')
+
+center_screen("images/screen/camera1/*", "images/screen/camera2/*")
+
 
 # triangulate 3d calibration pattern points
 # mirror_points_3d = triangulate(mtx1, mtx2, R, T, imgpoints1_dst, imgpoints2_dst)
@@ -93,6 +167,8 @@ for point in virtual_screen_points_3d.T:
 # get center of the screen
 l = len(screen_points[0])//2
 center_screen = screen_points[:,l]
+
+
 
 # calculate normale of the screen
 normal_screen = norm_plane(screen_points)
@@ -173,3 +249,5 @@ plt.show()
 cv_file = cv2.FileStorage('screenCalibration.XML', cv2.FileStorage_WRITE)
 cv_file.write("rmtx_screen", rmtx_s)
 cv_file.write("location_screen", center_screen)
+
+print(center_screen)

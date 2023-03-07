@@ -7,8 +7,8 @@ sub_folder = input("What do you need pictures for: ")
 
 binning = 1
 gain = 15.0
-screen = True
-ROI = True
+screen = False
+ROI = False
 roi = [3088, 2064]
 
 device_manager = gx.DeviceManager()
@@ -21,9 +21,9 @@ print(f"Number of enumerated devices is {dev_num}")
 cam1 = device_manager.open_device_by_sn(sn1)
 
 # binning
-if binning != 1:
-    cam1.BinningHorizontal.set(binning)
-    cam1.BinningVertical.set(binning)
+# if binning != 1:
+cam1.BinningHorizontal.set(binning)
+cam1.BinningVertical.set(binning)
 
 cam1.size = (cam1.Width.get(), cam1.Height.get())
 width = cam1.size[0]
@@ -68,9 +68,9 @@ print(f"Camera {sn1} is initialized")
 cam2 = device_manager.open_device_by_sn(sn2)
 
 # binning
-if binning != 1:
-    cam2.BinningHorizontal.set(binning)
-    cam2.BinningVertical.set(binning)
+# if binning != 1:
+cam2.BinningHorizontal.set(binning)
+cam2.BinningVertical.set(binning)
 cam2.size = (cam2.Width.get(), cam2.Height.get())
 
 if ROI:

@@ -3,6 +3,18 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 def mirror_dots(image, pattern_size, area):
+  """
+  Finds the dot patterns on the mirror.
+
+  input:
+  - Image with dot patterns (image)
+  - The size of the pattern (pattern_size)
+  - The limits of the are of the blob (area)
+
+  output:
+  - Image with recognized patterns (image)
+  - Centers of the dots (centers)
+  """
   # get shape of the image
   shape = image.shape
 
@@ -41,17 +53,32 @@ def mirror_dots(image, pattern_size, area):
     centers[count,:] = center
     count += 1
 
+  # Put number of the pattern on the image
   image = cv2.putText(image, str(1), (int(upper_centers[0,0][0]), int(upper_centers[0,0][1])), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 4, (255,0,0), 5,
                       cv2.LINE_AA)
   image = cv2.putText(image, str(2), (int(lower_centers[0,0][0]), int(lower_centers[0,0][1])), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 4, (255,0,0), 5, 
                       cv2.LINE_AA)
 
+  # draw chessboard on image
   image = cv2.drawChessboardCorners(image, pattern_size, upper_centers, upper_ret)
   image = cv2.drawChessboardCorners(image, pattern_size, lower_centers, lower_ret)
   
   return image, centers
 
 def screen_dots(image, pattern_size, area):
+  """
+  Finds the dot pattern on the screen.
+
+  input:
+  - Image with dot patterns (image)
+  - Pattern size of the dots (pattern_size)
+  - Limits of the area of the dots (area)
+
+  output:
+  - Image with the recognized dots (image)
+  - Centers of the dots (centers)
+  """
+
   # get shape of the image
   shape = image.shape
 
@@ -75,6 +102,17 @@ def screen_dots(image, pattern_size, area):
   return image, centers
 
 def led_dots(image, area):  
+  """
+  Finds the dots of the LED light sources.
+
+  input:
+  - Image with the LED dots (image)
+  - Limits of the area of the dots (area)
+
+  output:
+  - Image with the recognized dots (image)
+  - Coodinates of the LED in the images (led_locations)
+  """
   # Set filtering parameters
   # Initialize parameter setting using cv2.SimpleBlobDetector
   params = cv2.SimpleBlobDetector_Params()
@@ -109,6 +147,12 @@ def led_dots(image, area):
 
 
 def show_images(images):
+  """
+  Plots images.
+
+  input:
+  - Images to plot (images)
+  """
   # create titles of images and put them in an array
   titles = ['Camera 1', 'Camera 2']
   
