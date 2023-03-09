@@ -25,6 +25,7 @@ def plane(points, ax, label, color, _flag_plot=True, _virtual_screen=False):
   return point_plane, normal_plane
 
 def norm_plane(points):
+  # points = np.concatenate(points, axis=1)
   points = points.T
   n = len(points)
   points = np.c_[points, np.ones(n)]
