@@ -144,7 +144,6 @@ ax.scatter(virtual_led_points_3d[0,0], virtual_led_points_3d[2,0], virtual_led_p
 ax.scatter(virtual_led_points_3d[0,1], virtual_led_points_3d[2,1], virtual_led_points_3d[1,1], marker="v", label='virtual2')
 ax.scatter(virtual_led_points_3d[0,2], virtual_led_points_3d[2,2], virtual_led_points_3d[1,2], marker="v", label='virtual3')
 
-
 # set axis labels and legens
 ax.set_xlabel('x')
 ax.set_ylabel('z')
@@ -156,7 +155,7 @@ ax.legend()
 plt.get_current_fig_manager().window.showMaximized()
 plt.show()
 
-
+print(np.linalg.norm(led_points, axis=0))
 # Save parameters to XML file
 cv_file = cv2.FileStorage('ledCalibration.XML', cv2.FileStorage_WRITE)
 cv_file.write("LED_locations", led_points)

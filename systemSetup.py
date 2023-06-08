@@ -55,7 +55,7 @@ led3 = np.vstack([led_locations[:,1][...,None], 1])
 led2 = np.vstack([led_locations[:,2][...,None], 1]) 
 
 
-draw_coordinate_system([0,0,0], "Screen", ax, color='blue')
+draw_coordinate_system(location_screen, "Screen", ax, R=rmtx_screen, color='blue')
 draw_coordinate_system(nodalpoint_camera1, "Camera1", ax, R=rmtx1, color='red')
 draw_coordinate_system(nodalpoint_camera2, "Camera2", ax, R=rmtx2, color='green')
 ax.scatter(led1[0], led1[2], led1[1], color='yellow', marker='^', label="LED1")
@@ -69,6 +69,12 @@ ax.set_ylabel('z')
 ax.set_zlabel('y')
 ax.invert_zaxis()
 ax.legend()
+
+ax.set_xlim((-550,150))
+ax.set_ylim((0, 700))
+ax.set_zlim((600,-100))
+
+print(f"screen: {np.linalg.norm(location_screen)}\n camera1: {nodalpoint_camera1}\n camera2: {np.linalg.norm(nodalpoint_camera2)}\n LED1: {np.linalg.norm(led1)}\n LED2: {np.linalg.norm(led2)}\n LED3: {np.linalg.norm(led3)}")
 
 # set plot fullscreen and show
 plt.get_current_fig_manager().window.showMaximized()

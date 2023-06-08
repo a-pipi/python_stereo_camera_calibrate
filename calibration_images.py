@@ -195,7 +195,7 @@ while True:
         break
     if k == ord('s'):
         if num == 0:
-            folder = f'/home/arthur/PycharmProjects/python_stereo_camera_calibrate/images/{sub_folder}/camera1'
+            folder = f'/home/arthur/Projects/python_stereo_camera_calibrate/images/{sub_folder}/camera1'
             for filename in os.listdir(folder):
                 file_path = os.path.join(folder, filename)
                 try:
@@ -206,7 +206,7 @@ while True:
                 except Exception as e:
                     print('Failed to delete %s. Reason: %s' % (file_path, e))
             
-            folder = f'/home/arthur/PycharmProjects/python_stereo_camera_calibrate/images/{sub_folder}/camera1'
+            folder = f'/home/arthur/Projects/python_stereo_camera_calibrate/images/{sub_folder}/camera1'
             for filename in os.listdir(folder):
                 file_path = os.path.join(folder, filename)
                 try:

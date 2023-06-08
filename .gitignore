@@ -1,0 +1,6 @@
+etcalib
+images
+
+# Ignore pycache files
+__pycache__/
+gxipy/__pycache__/

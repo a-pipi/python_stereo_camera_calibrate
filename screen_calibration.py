@@ -188,4 +188,4 @@ cv_file = cv2.FileStorage('screenCalibration.XML', cv2.FileStorage_WRITE)
 cv_file.write("rmtx_screen", rmtx_s)
 cv_file.write("location_screen", center_screen_3d)
 
-print(center_screen_3d)
+print(np.linalg.norm(center_screen_3d), center_screen_3d)
